@@ -68,3 +68,6 @@ def buildName = (endpoint == 'android') ? 'build.android.gradle' : 'build.gradle
 include modulePrefix + 'hibate-annotation'
 project(modulePrefix + 'hibate-annotation').projectDir = new File('hibate/annotation')
 project(modulePrefix + 'hibate-annotation').buildFileName = buildName
+include modulePrefix + 'hibate-natives'
+project(modulePrefix + 'hibate-natives').projectDir = new File('hibate/logger/natives')
+project(modulePrefix + 'hibate-natives').buildFileName = buildName

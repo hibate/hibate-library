@@ -1,0 +1,20 @@
+plugins {
+    id 'java-library'
+}
+
+apply from: rootDir.absolutePath + '/constants.gradle'
+
+version project.ext.nativesVersion
+
+dependencies {
+    compileOnly "org.slf4j:slf4j-api:$slf4jVersion"
+}
+
+test {
+    useJUnitPlatform()
+}
+
+java {
+    withJavadocJar()
+    withSourcesJar()
+}

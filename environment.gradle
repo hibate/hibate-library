@@ -2,6 +2,7 @@
 
 project.ext {
     env = project.hasProperty('environment') ? project.property('environment') : 'dev'
+    nav = project.hasProperty('environment.native') ? project.property('environment.native') : 'prod'
 
     if (!project.hasProperty('modulePrefix')) {
         modulePrefix = ':'
