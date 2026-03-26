@@ -15,6 +15,7 @@ if (endpoint == 'android') {
 }
 
 project.ext {
-    annotationVersion = '1.0.0'
+    annotationsVersion = '1.0.0'
     nativesVersion = '1.0.0'
+    logbacksVersion = '1.0.0'
 }

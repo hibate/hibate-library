@@ -71,3 +71,8 @@ project(modulePrefix + 'hibate-annotation').buildFileName = buildName
 include modulePrefix + 'hibate-natives'
 project(modulePrefix + 'hibate-natives').projectDir = new File('hibate/logger/natives')
 project(modulePrefix + 'hibate-natives').buildFileName = buildName
+if (endpoint == 'android') {
+    include modulePrefix + 'hibate-logback'
+    project(modulePrefix + 'hibate-logback').projectDir = new File('hibate/logger/logback')
+    project(modulePrefix + 'hibate-logback').buildFileName = buildName
+}

@@ -4,7 +4,7 @@ plugins {
 
 apply from: rootDir.absolutePath + '/constants.gradle'
 
-version project.ext.annotationVersion
+version project.ext.annotationsVersion
 
 sourceSets {
     main {

@@ -4,10 +4,10 @@ plugins {
 
 apply from: rootDir.absolutePath + '/constants.gradle'
 
-version project.ext.annotationsVersion
+version project.ext.logbacksVersion
 
 android {
-    namespace 'org.hibate.annotation'
+    namespace 'org.hibate.logger.logback'
     compileSdk project.ext.compileSdkVersion
 
     defaultConfig {
@@ -39,4 +39,11 @@ dependencies {
     testImplementation "junit:junit:${junitVersion}"
     androidTestImplementation "androidx.test.ext:junit:${testJunitVersion}"
     androidTestImplementation "androidx.test.espresso:espresso-core:${testEspressoCoreVersion}"
+
+    compileOnly group: 'androidx.annotation', name: 'annotation', version: annotationVersion
+    compileOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jVersion
+    api(group: 'ch.qos.logback', name: 'logback-classic', version: logbackVersion) {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
+    api group: 'ch.qos.logback', name: 'logback-core', version: logbackVersion
 }
