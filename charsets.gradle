@@ -1,0 +1,10 @@
+// charsets
+
+def encoding = 'UTF-8'
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = encoding
+}
+tasks.withType(Javadoc).configureEach {
+    options.encoding = encoding
+}

@@ -1,0 +1,7 @@
+// extensions
+
+project.ext {
+    junitVersion = '6.0.3'
+
+    annotationVersion = '1.0.0'
+}

@@ -1,0 +1,45 @@
+// repositories
+
+def isIntranet() {
+    def repository = project.hasProperty('repository') ? project.property('repository') : 'in'
+    return 'in'.equalsIgnoreCase(repository as String) && file(rootDir.absolutePath + '/intranet.gradle').exists()
+}
+
+static def isInsecure(url) {
+    return !url.startsWith("https://")
+}
+
+static def centrals() {
+    return List.of(
+            'https://mirrors.cloud.tencent.com/nexus/repository/maven-public',
+            'https://maven.aliyun.com/repository/public'
+    )
+}
+
+if (file(rootDir.absolutePath + '/intranet.gradle').exists()) {
+    apply from: rootDir.absolutePath + '/intranet.gradle'
+}
+
+repositories {
+    google()
+    mavenCentral()
+    centrals().each { s ->
+        maven {
+            allowInsecureProtocol = isInsecure(s)
+            url s
+        }
+    }
+
+    if (isIntranet()) {
+        maven {
+            allowInsecureProtocol = isInsecure(intranetCentral)
+            url intranetCentral
+        }
+    }
+
+    if (file(rootDir.absolutePath + '/dependencies/libs').exists()) {
+        flatDir {
+            dirs rootDir.absolutePath + '/dependencies/libs'
+        }
+    }
+}

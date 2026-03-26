@@ -1,0 +1,19 @@
+// constants
+
+if (file(rootDir.absolutePath + '/environment.gradle').exists()) {
+    apply from: rootDir.absolutePath + '/environment.gradle'
+}
+
+if (endpoint == 'android') {
+    if (file(rootDir.absolutePath + '/extensions.android.gradle').exists()) {
+        apply from: rootDir.absolutePath + '/extensions.android.gradle'
+    }
+} else {
+    if (file(rootDir.absolutePath + '/extensions.gradle').exists()) {
+        apply from: rootDir.absolutePath + '/extensions.gradle'
+    }
+}
+
+project.ext {
+    annotationsVersion = '1.0.0'
+}

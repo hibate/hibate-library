@@ -1,0 +1,23 @@
+plugins {
+    id 'java-library'
+}
+
+apply from: rootDir.absolutePath + '/constants.gradle'
+
+version project.ext.annotationVersion
+
+sourceSets {
+    main {
+        java {
+            srcDir 'src/main/android'
+        }
+    }
+}
+
+dependencies {
+}
+
+java {
+    withJavadocJar()
+    withSourcesJar()
+}

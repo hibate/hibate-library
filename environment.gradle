@@ -1,0 +1,56 @@
+// environment
+
+project.ext {
+    env = project.hasProperty('environment') ? project.property('environment') : 'dev'
+
+    if (!project.hasProperty('modulePrefix')) {
+        modulePrefix = ':'
+    }
+}
+
+group 'org.hibate'
+
+if (endpoint != 'android') {
+    test {
+        useJUnitPlatform()
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    tasks.withType(Javadoc).configureEach {
+        options {
+            addStringOption('Xdoclint:none', '-quiet')
+        }
+        failOnError = false
+    }
+}
+
+if (file(rootDir.absolutePath + '/charsets.gradle').exists()) {
+    apply from: rootDir.absolutePath + '/charsets.gradle'
+}
+if (file(rootDir.absolutePath + '/defines.gradle').exists()) {
+    apply from: rootDir.absolutePath + '/defines.gradle'
+}
+if (file(rootDir.absolutePath + '/dependencies.gradle').exists()) {
+    apply from: rootDir.absolutePath + '/dependencies.gradle'
+}
+if (file(rootDir.absolutePath + '/intranet.gradle').exists()) {
+    apply from: rootDir.absolutePath + '/intranet.gradle'
+}
+if (file(rootDir.absolutePath + '/repositories.gradle').exists() && (endpoint != 'android')) {
+    apply from: rootDir.absolutePath + '/repositories.gradle'
+}
+
+if (endpoint == 'android') {
+    android {
+        packagingOptions {
+            jniLibs {
+                useLegacyPackaging true
+            }
+
+            excludes += '/META-INF/{AL2.0,LGPL2.1,INDEX.LIST}'
+        }
+    }
+}

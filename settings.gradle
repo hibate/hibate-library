@@ -1,0 +1,70 @@
+//
+
+pluginManagement {
+    if (endpoint == 'android') {
+        repositories {
+            gradlePluginPortal()
+            google()
+            mavenCentral()
+            List.of(
+                    'https://mirrors.cloud.tencent.com/nexus/repository/maven-public',
+                    'https://maven.aliyun.com/repository/public'
+            ).each { s ->
+                maven {
+                    allowInsecureProtocol = !s.startsWith("https://")
+                    url s
+                }
+            }
+            if (file(rootDir.absolutePath + '/intranet.gradle').exists()) {
+                apply from: rootDir.absolutePath + '/intranet.gradle'
+                maven {
+                    allowInsecureProtocol = !intranetCentral.startsWith("https://")
+                    url intranetCentral
+                }
+            }
+        }
+        plugins {
+            id 'com.android.application' version '9.1.0'
+            id 'com.android.library' version '9.1.0'
+        }
+    }
+}
+dependencyResolutionManagement {
+    if (endpoint == 'android') {
+        repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+        repositories {
+            google()
+            mavenCentral()
+            List.of(
+                    'https://mirrors.cloud.tencent.com/nexus/repository/maven-public',
+                    'https://maven.aliyun.com/repository/public'
+            ).each { s ->
+                maven {
+                    allowInsecureProtocol = !s.startsWith("https://")
+                    url s
+                }
+            }
+            if (file(rootDir.absolutePath + '/intranet.gradle').exists()) {
+                apply from: rootDir.absolutePath + '/intranet.gradle'
+                maven {
+                    allowInsecureProtocol = !intranetCentral.startsWith("https://")
+                    url intranetCentral
+                }
+            }
+            if (file(rootDir.absolutePath + '/dependencies/libs').exists()) {
+                flatDir {
+                    dirs rootDir.absolutePath + '/dependencies/libs'
+                }
+            }
+        }
+    }
+}
+
+rootProject.name = "hibate-library"
+
+def modulePrefix = ':'
+def buildName = (endpoint == 'android') ? 'build.android.gradle' : 'build.gradle'
+
+include modulePrefix + 'hibate-annotation'
+project(modulePrefix + 'hibate-annotation').projectDir = new File('hibate/annotation')
+project(modulePrefix + 'hibate-annotation').buildFileName = buildName
