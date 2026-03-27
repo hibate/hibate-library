@@ -19,4 +19,5 @@ project.ext {
     nativesVersion = '1.0.0'
     logbacksVersion = '1.0.0'
     graphicsVersion = '1.0.0'
+    mediaVersion = '1.0.0'
 }

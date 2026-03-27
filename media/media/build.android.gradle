@@ -1,0 +1,64 @@
+plugins {
+    id 'com.android.library'
+}
+
+apply from: rootDir.absolutePath + '/constants.gradle'
+
+version project.ext.mediaVersion
+
+android {
+    namespace 'org.hibate.graphics'
+    compileSdk project.ext.compileSdkVersion
+
+    defaultConfig {
+        minSdk project.ext.minSdkVersion
+        targetSdk project.ext.targetSdkVersion
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility project.ext.sourceCompatibility
+        targetCompatibility project.ext.targetCompatibility
+    }
+    publishing {
+        singleVariant('release') {
+            withSourcesJar()
+        }
+    }
+
+    if (!"dev".equalsIgnoreCase(nav)) {
+        sourceSets {
+            main {
+                jniLibs.srcDir 'src/main/libs'
+                jni.srcDirs = [] // Disable the automatic ndk-build call by Android Studio.
+            }
+        }
+    } else {
+        externalNativeBuild {
+            ndkBuild {
+                path "src/main/jni/Android.mk"
+            }
+        }
+    }
+}
+
+dependencies {
+    testImplementation "junit:junit:${junitVersion}"
+    androidTestImplementation "androidx.test.ext:junit:${testJunitVersion}"
+    androidTestImplementation "androidx.test.espresso:espresso-core:${testEspressoCoreVersion}"
+    testImplementation "ch.qos.logback:logback-classic:${logbackVersion}"
+
+    compileOnly "org.slf4j:slf4j-api:$slf4jVersion"
+    compileOnly "androidx.annotation:annotation:$annotationVersion"
+
+    api project(modulePrefix + ':hibate-annotation')
+    api project(modulePrefix + ':hibate-natives')
+}

@@ -4,4 +4,5 @@ project.ext {
     junitVersion = '6.0.3'
 
     slf4jVersion = '2.0.17'
+    logbackVersion = '1.5.32'
 }
