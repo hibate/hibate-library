@@ -75,4 +75,7 @@ if (endpoint == 'android') {
     include modulePrefix + 'hibate-logback'
     project(modulePrefix + 'hibate-logback').projectDir = new File('hibate/logger/logback')
     project(modulePrefix + 'hibate-logback').buildFileName = buildName
+    include modulePrefix + 'hibate-graphics'
+    project(modulePrefix + 'hibate-graphics').projectDir = new File('media/graphics')
+    project(modulePrefix + 'hibate-graphics').buildFileName = buildName
 }
