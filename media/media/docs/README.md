@@ -20,13 +20,11 @@
 
 ### 编译
 
-以下以 `Ubuntu` 系统环境编译为例。可执行源码路径下的 `build.sh` 脚本一键编译 `Linux` 和 `Windows` 版本。
+请配置 `Java` 环境, 并导出 `JAVA_HOME` 环境变量。
 
-#### Android
+#### `Android`
 
-配置 `Android NDK` 环境, 将其路径添加到系统环境变量 `PATH` 中。
-
-配置 `Android NDK` 环境, 将其路径添加到系统环境变量 `PATH` 中。
+配置 [`Android NDK`](https://developer.android.com/ndk) 环境, 将其路径添加到系统环境变量 `PATH` 中。
 
 `Windows` 系统下双击源码路径下 `build.bat` 脚本执行编译，双击 `clean.bat` 脚本执行清理。
 
@@ -34,54 +32,54 @@
 
 或编辑 `gradle.properties` 文件, 修改变量 `environment.native` 值为 `dev`, 使用 `Android Studio` 自动编译均可。
 
-#### Linux
+#### `Linux`
 
-* 编译环境
+以下以 `Ubuntu` 系统环境编译为例, 请执行以下命令配置编译环境:
 
 ```shell
 $ sudo apt update
 $ sudo apt install gcc g++ make
 ```
 
-* 编译
+执行以下命令编译, 默认编译 `Release` 版本:
 
 ```shell
-$ cd auto
-$ make
+$ ./build.sh
 ```
 
-编译 `debug`
+编译 `Debug` 版本:
 
 ```shell
-$ cd auto
-$ make debug=1
+$ export APP_OPTIM=Debug
+$ ./build.sh
+```
+
+#### `macOS`
+
+请安装命令行开发工具以及 `CMake` 环境。
+
+执行以下命令编译, 默认编译 `Release` 版本:
+
+```shell
+$ ./build.sh
+```
+
+编译 `Debug` 版本:
+
+```shell
+$ export APP_OPTIM=Debug
+$ ./build.sh
 ```
 
 #### Windows
 
-* 编译环境
+请安装 `Visual Studio` 开发工具、`CMake` 工具包软件。
 
-```shell
-$ sudo apt update
-$ sudo apt install gcc g++ make mingw-w64
-```
+使用 `CMake` 生成 `Visual Studio` 工程, 使用 `Visual Studio` 打开工程编译即可。
 
-* For 64 Bit
+### 使用
 
-```shell
-$ cd auto
-$ export CROSS_TOOLCHAINS=x86_64-w64-mingw32-
-$ make
-```
-
-* For 32 Bit
-
-```shell
-$ cd auto
-$ export CROSS_TOOLCHAINS=i686-w64-mingw32-
-$ make
-```
-
-**备注**
-
-在 `Windows` 中使用时需加载 `mingw` 对应的动态库。
+* `Windows` 系统环境下使用, 请将依赖库拷贝至系统环境变量 `PATH` 下
+* `Linux` 系统环境下使用, 请将依赖库拷贝至系统库搜索路径下, 如: `/usr/local/lib`
+* `macOS` 系统环境下使用, 请将依赖库拷贝至 `~/Library/Java/Extensions` 目录下
+* 非开发环境下使用, 请导出依赖库路径至系统库搜索路径下即可

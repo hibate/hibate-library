@@ -78,7 +78,12 @@ LIB_API void log_appender_internal(LOG_PRIORITY priority, const char* tag, const
     vsnprintf(buf, LOGGER_BUFFER_MAX_LENGTH, format, args);
     va_end(args);
 
+#ifdef __APPLE__
+    LoggerListenerRegistry* registry = ctx->getLoggerListenerRegistry();
+    if (nullptr != registry) {
+#else
     if (const LoggerListenerRegistry* registry = ctx->getLoggerListenerRegistry(); nullptr != registry) {
+#endif
         registry->notifyListeners(priority, (nullptr == tag) ? "" : tag,
                 ctx->isLineEnabled() ? location : nullptr, buf);
     }
@@ -86,7 +91,12 @@ LIB_API void log_appender_internal(LOG_PRIORITY priority, const char* tag, const
 
 int addLoggerListenerInternal(OnLoggerListener* listener) {
     const LoggerContext* ctx = LoggerContext::getInstance();
+#ifdef __APPLE__
+    LoggerListenerRegistry* registry = ctx->getLoggerListenerRegistry();
+    if (nullptr != registry) {
+#else
     if (LoggerListenerRegistry* registry = ctx->getLoggerListenerRegistry(); nullptr != registry) {
+#endif
         return registry->addLoggerListener(listener);
     }
     return -1;

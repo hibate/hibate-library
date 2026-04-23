@@ -2,20 +2,36 @@
 
 ### `FFmpeg`
 
+请使用编译脚本完成构建, 脚本兼容 `Linux`、`macOS` 操作系统, 已在以下环境完成验证:
+
+name    | abi    | version
+--------|--------|------------
+Android | all    | `Android NDK r28c`
+Linux   | x86_64 | `Ubuntu 24.04`
+macOS   | arm64  | `macOS Sequoia 15.7.5`
+
 #### 环境
 
-安装依赖库, `Ubuntu` 系统使用以下命令安装:
+强烈建议在编译期开启 `ASM` 汇编优化, 构建脚本已默认支持(需安装依赖库)。
+
+`Ubuntu` 系统环境请执行以下命令安装依赖:
 
 ```shell
 $ sudo apt update
 $ sudo apt install yasm nasm
 ```
 
+`macOS` 系统环境请执行以下命令安装依赖:
+
+```shell
+$ brew install yasm nasm
+```
+
 **备注**
 
-* 新版本优先使用 `nasm`
+* `FFmpeg` 新版本优先使用 `nasm`
 
-#### 编译 `FFmpeg`
+#### 源码
 
 克隆 `FFmpeg` 源码:
 
@@ -29,7 +45,26 @@ $ git clone https://github.com/FFmpeg/FFmpeg.git
 $ git checkout <version>
 ```
 
-安装编译工具:
+#### `Android`
+
+安装 [`Android NDK`](https://developer.android.com/ndk) 环境。
+
+使用以下命令编译 `FFmpeg`:
+
+```shell
+$ export ANDROID_NDK=<android ndk directory>
+$ ./sbin/build.sh <ffmpeg source direcroty>
+```
+
+可选变量如下:
+
+name                   | default | description
+-----------------------|---------|---------------------
+ANDROID_ABI            | 21      | Android 版本
+
+#### `Linux`
+
+以下以 `Ubuntu` 系统环境编译为例, 请执行以下命令配置编译环境:
 
 ```shell
 $ sudo apt update
@@ -42,30 +77,23 @@ $ sudo apt install gcc g++ make
 $ ./sbin/build.sh <ffmpeg source direcroty>
 ```
 
-将 `Windows` 下的库放在 `prebuilt/ffmpeg/libs/windows` 目录下。
+#### `macOS`
 
-#### `Android` 支持
-
-安装 [`Android NDK`](https://developer.android.com/ndk)
+请安装命令行开发工具。
 
 使用以下命令编译 `FFmpeg`:
 
 ```shell
-$ export ANDROID_NDK=<android ndk directory>
 $ ./sbin/build.sh <ffmpeg source direcroty>
 ```
 
-构建脚本已在 `NDK r28c` 下验证。
+#### `Windows`
 
-默认情况下, 构建脚本编译 `Android` 版本时也会同时编译 `Linux` 版本库。
-
-#### `Windows` 支持
-
-请前往 `FFmpeg` [官网下载](https://ffmpeg.org)即可。
+请前往 `FFmpeg` [官网下载](https://ffmpeg.org), 解压缩预编译库并将其拷贝至对应目录下(请参考目录结构)。
 
 #### 目录结构
 
-`FFmpeg` 编译完成后, 请调整库目录结构如下(供依赖库链接使用):
+编译完成后, 请调整库目录结构如下(供依赖库链接使用):
 
 ```
 prebuilt
@@ -81,16 +109,33 @@ prebuilt
          - ...
        - ...
      - linux
-       - x64
+       - x86_64
          - libavcodec.so
+         - ...
+     - macos
+       - arm64
+         - libavcodec.dylib
+         - ...
+       - x86_64
+         - libavcodec.dylib
          - ...
      - windows
        - x64
+         - avcodec.lib
          - avcodec-62.dll
          - ...
    - share
 ```
 
+各系统环境架构如下:
+
+name    | abi
+--------|--------------
+Android | arm64-v8a、armeabi-v7a、riscv64、x86、x86_64
+Linux   | arm64、x86_64、x86
+macOS   | arm64、x86_64
+Windows | arm64、x64、x86
+
 ### logger
 
-请参考 `hibate-natives` 模块完成编译, 针对 `Linux` 和 `Windows` 环境, 编译完成后, 请调整库目录结构。
+请参考 `hibate-natives` 模块完成编译, 针对 `Linux`、`macOS`、`Windows` 环境, 编译完成后, 请调整库目录结构。

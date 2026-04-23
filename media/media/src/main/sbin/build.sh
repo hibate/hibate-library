@@ -24,15 +24,15 @@
 PRG="$0"
 
 while [ -h "$PRG" ] ; do
-  ls=`ls -ld "$PRG"`
-  link=`expr "$ls" : '.*-> \(.*\)$'`
-  if expr "$link" : '/.*' > /dev/null; then
-    PRG="$link"
-  else
-    PRG=`dirname "$PRG"`/"$link"
-  fi
+    ls=`ls -ld "$PRG"`
+    link=`expr "$ls" : '.*-> \(.*\)$'`
+    if expr "$link" : '/.*' > /dev/null; then
+        PRG="$link"
+    else
+        PRG=`dirname "$PRG"`/"$link"
+    fi
 done
-PRGDIR=`dirname "$PRG"`
+PRG_DIR=`dirname "$PRG"`
 
 # 当前 shell 执行路径
 CURRENT_DIR=$(pwd)
@@ -40,24 +40,71 @@ CURRENT_DIR=$(pwd)
 # ffmpeg 源码目录
 FFMPEG_SOURCE=$1
 
-# make 参数
-MAKE_FLAGS="-j4"
+# 编译线程数
+MAKE_FLAGS="-j$(getconf _NPROCESSORS_ONLN)"
 
 # 编译路径
-INSTALL_DST="${PRGDIR}/../jni/prebuilt/ffmpeg"
+INSTALL_PATH="${PRG_DIR}/../jni/prebuilt/ffmpeg"
 
 # 编译选项文件
-OPTIONS_SOURCE="${PRGDIR}/options.sh"
+OPTIONS_SOURCE="${PRG_DIR}/options.sh"
 
-# 选择编译的 abi 类型
-APP_ABI=(
-    "arm64-v8a"
-    "armeabi-v7a"
-    "riscv64"
-    "x86"
-    "x86_64"
-    "x86-64"
-)
+# 编译架构
+APP_SYSTEMS="Android"
+# Android
+ANDROID_ABIES["Android"]="arm64-v8a armeabi-v7a riscv64 x86 x86_64"
+
+#########################################################################
+#
+# Environment
+#
+#########################################################################
+SYSTEM_NAME=$(uname -s)
+ARCHITECTURE=$(uname -m)
+
+# 系统: Linux、macOS
+if [ "${SYSTEM_NAME}" == "Darwin" ]; then
+    APP_SYSTEM="macOS"
+elif [ "${SYSTEM_NAME}" == "Linux" ]; then
+    APP_SYSTEM="Linux"
+else
+    echo "The script does not support ${SYSTEM_NAME} system."
+    exit 0
+fi
+
+# 架构
+#   Linux: arm64、x86_64、x86
+#   macOS: arm64、x86_64
+if [ "${APP_SYSTEM}" == "macOS" ]; then
+    APP_ABI=${ARCHITECTURE}
+elif [ "${APP_SYSTEM}" == "Linux" ]; then
+    case "${ARCHITECTURE}" in
+        x86_64|amd64)
+            APP_ABI="x86_64"
+            ;;
+        i386|i686|x86)
+            APP_ABI="x86"
+            ;;
+        aarch64|arm64)
+            APP_ABI="arm64"
+            ;;
+        *)
+            APP_ABI=${ARCHITECTURE}
+            ;;
+    esac
+fi
+
+# 分支: Release、Debug
+if [ -z "${APP_OPTIM}" ]; then
+    APP_OPTIM="Release"
+fi
+
+# 后缀
+if [ "${APP_SYSTEM}" == "macOS" ]; then
+    APP_SUFFIX="*.dylib"
+elif [ "${APP_SYSTEM}" == "Linux" ]; then
+    APP_SUFFIX="*.so"
+fi
 
 #########################################################################
 #
@@ -85,7 +132,24 @@ fi
 #
 #########################################################################
 
-file_mkdirs() {
+# 检查命令是否存在
+# $1 : 命令
+# 存在返回 true
+# 不存在返回 false
+function check_command_exists() {
+    cmd_tmp=$1
+    type ${cmd_tmp} >/dev/null 2>&1 || {
+        unset cmd_tmp
+        echo false
+        return
+    }
+    unset cmd_tmp
+    echo true
+}
+
+# 创建文件夹
+# $1 : 路径
+function file_mkdirs() {
     path_tmp=$1
     if [ ! -z "${path_tmp}" ] && [ ! -d "${path_tmp}" ]; then
         mkdir -p ${path_tmp}
@@ -93,7 +157,9 @@ file_mkdirs() {
     unset path_tmp
 }
 
-file_realpath() {
+# 获取绝对路径
+# $1 : 路径
+function file_realpath() {
     path_tmp=$1
     if [ ! -z "${path_tmp}" ] && [ -d "${path_tmp}" ]; then
         cd ${path_tmp} > /dev/null 2>&1
@@ -103,17 +169,6 @@ file_realpath() {
         echo ${path_tmp}
     fi
     unset path_tmp
-}
-
-check_command_exists() {
-    cmd_tmp=$1
-    type ${cmd_tmp} >/dev/null 2>&1 || {
-        unset cmd_tmp
-        echo false
-        return
-    }
-    unset cmd_tmp
-    echo true
 }
 
 #########################################################################
@@ -131,8 +186,10 @@ fi
 if [ -z "${NDK_PATH}" ] || [ ! -f "${NDK_PATH}/ndk-build" ]; then
     NDK_PATH=""
 fi
-# 编译平台环境("darwin-x86_64" for Mac OS X)
-if [ -z "${HOST_PLATFORM}" ]; then
+# 编译平台环境
+if [ "${APP_SYSTEM}" == "macOS" ]; then
+    HOST_PLATFORM="darwin-x86_64"
+elif [ "${APP_SYSTEM}" == "Linux" ]; then
     HOST_PLATFORM="linux-x86_64"
 fi
 if [ -z "${ANDROID_ABI}" ]; then
@@ -143,15 +200,16 @@ if [ "${ANDROID_ABI_64BIT}" -lt 21 ]; then
     echo "Using ANDROID_ABI 21 for 64-bit architectures"
     ANDROID_ABI_64BIT=21
 fi
+ANDROID_ABI_RISCV64BIT="$ANDROID_ABI"
+if [ "${ANDROID_ABI_RISCV64BIT}" -lt 35 ]; then
+    ANDROID_ABI_RISCV64BIT=35
+fi
 
 # 获取 ffmpeg 源码绝对路径
 FFMPEG_SOURCE=$(file_realpath ${FFMPEG_SOURCE})
 # 获取安装目录绝对路径
-if [ -d "${INSTALL_DST}" ] || [ -L "${INSTALL_DST}" ]; then
-    rm -rf ${INSTALL_DST}
-fi
-file_mkdirs ${INSTALL_DST}
-INSTALL_DST=$(file_realpath ${INSTALL_DST})
+file_mkdirs ${INSTALL_PATH}
+INSTALL_PATH=$(file_realpath ${INSTALL_PATH})
 
 if [ -f "${OPTIONS_SOURCE}" ]; then
     . ${OPTIONS_SOURCE}
@@ -182,191 +240,245 @@ COMMON_LDEXEFLAGS="\
 #
 #########################################################################
 
-for abi in ${APP_ABI[@]}
-do
-    PREFIX="libs"
+# 默认架构
+APP_SYSTEMS="${APP_SYSTEMS} ${APP_SYSTEM}"
+if [ "${APP_SYSTEM}" == "Linux" ]; then
+    LINUX_ABIES="${APP_ABI}"
+elif [ "${APP_SYSTEM}" == "macOS" ]; then
+    MACOS_ABIES="${APP_ABI}"
+fi
 
-    ARCH=
-    CPU=
-    CROSS_PREFIX=
-    SYSROOT=
-    EXTRA_OPTIONS="${COMMON_OPTIONS}"
-    EXTRA_CFLAGS="${COMMON_CFLAGS}"
-    EXTRA_LDFLAGS=""
-    EXTRA_LDEXEFLAGS="${COMMON_LDEXEFLAGS}"
-    TOOLCHAIN_PREFIX=
-    TOOLCHAIN_PLATFORM=
-
-    case ${abi} in
-        arm64-v8a)
-            if [ ! -z "${NDK_PATH}" ]; then
-                ARCH=aarch64
-                CPU=armv8-a
-                CROSS_PREFIX="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/bin/aarch64-linux-android${ANDROID_ABI}-"
-                SYSROOT="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/sysroot"
-                TOOLCHAIN_PREFIX="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/bin/llvm-"
-                TOOLCHAIN_PLATFORM="android/arm64-v8a"
-                EXTRA_OPTIONS="\
-                    ${EXTRA_OPTIONS} \
-                    --target-os=android \
-                    --enable-asm \
-                    "
-            fi
-            ;;
-        armeabi-v7a)
-            if [ ! -z "${NDK_PATH}" ]; then
-                ARCH=arm
-                CPU=armv7-a
-                CROSS_PREFIX="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/bin/armv7a-linux-androideabi${ANDROID_ABI}-"
-                SYSROOT="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/sysroot"
-                TOOLCHAIN_PREFIX="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/bin/llvm-"
-                TOOLCHAIN_PLATFORM="android/armeabi-v7a"
-                EXTRA_OPTIONS="\
-                    ${EXTRA_OPTIONS} \
-                    --target-os=android \
-                    --enable-asm \
-                    " \
-                EXTRA_CFLAGS="\
-                    ${EXTRA_CFLAGS} \
-                    -march=armv7-a \
-                    -mfloat-abi=softfp \
-                    " \
-                EXTRA_LDFLAGS="\
-                    -Wl,--fix-cortex-a8 \
-                    "
-            fi
-            ;;
-        riscv64)
-            if [ ! -z "${NDK_PATH}" ]; then
-                ARCH=riscv64
-                CPU=generic
-                ANDROID_ABI="35"
-                CROSS_PREFIX="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/bin/riscv64-linux-android${ANDROID_ABI}-"
-                SYSROOT="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/sysroot"
-                TOOLCHAIN_PREFIX="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/bin/llvm-"
-                TOOLCHAIN_PLATFORM="android/riscv64"
-                EXTRA_OPTIONS="\
-                    ${EXTRA_OPTIONS} \
-                    --target-os=android \
-                    --enable-asm \
-                    "
-            fi
-            ;;
-        x86)
-            if [ ! -z "${NDK_PATH}" ]; then
-                ARCH=x86
-                CPU=i686
-                CROSS_PREFIX="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/bin/i686-linux-android${ANDROID_ABI}-"
-                SYSROOT="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/sysroot"
-                TOOLCHAIN_PREFIX="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/bin/llvm-"
-                TOOLCHAIN_PLATFORM="android/x86"
-                EXTRA_OPTIONS="\
-                    ${EXTRA_OPTIONS} \
-                    --target-os=android \
-                    --disable-asm \
-                    "
-            fi
-            ;;
-        x86_64)
-            if [ ! -z "${NDK_PATH}" ]; then
-                ARCH=x86_64
-                CPU=x86-64
-                CROSS_PREFIX="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/bin/x86_64-linux-android${ANDROID_ABI}-"
-                SYSROOT="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/sysroot"
-                TOOLCHAIN_PREFIX="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/bin/llvm-"
-                TOOLCHAIN_PLATFORM="android/x86_64"
-                EXTRA_OPTIONS="\
-                    ${EXTRA_OPTIONS} \
-                    --target-os=android \
-                    --disable-asm \
-                    "
-            fi
-            ;;
-        x86-64)
-            ARCH=x86_64
-            CPU=x86-64
-            TOOLCHAIN_PREFIX="${CROSS_PREFIX}"
-            TOOLCHAIN_PLATFORM="linux/x64"
-            if [ -f "/usr/bin/yasm" ] || [ -f "/usr/bin/nasm" ]; then
-                EXTRA_OPTIONS="\
-                    ${EXTRA_OPTIONS} \
-                    --enable-x86asm \
-                    "
-            fi
-            ;;
-        *)
-            ;;
-    esac
-
-    if [ ! -z "${ARCH}" ] && [ ! -z "${CPU}" ]; then
-        TOOLCHAIN_CC="${TOOLCHAIN_PREFIX}gcc"
-        if [ -f "${TOOLCHAIN_CC}" ] || [ $(check_command_exists "${TOOLCHAIN_CC}") = true ]; then
-            if [ $(check_command_exists "ccache") = true ]; then
-                TOOLCHAIN_CC="ccache ${TOOLCHAIN_CC}"
-                EXTRA_OPTIONS="${EXTRA_OPTIONS} --cc='${TOOLCHAIN_CC}'"
-            else
-                EXTRA_OPTIONS="${EXTRA_OPTIONS} --cc=${TOOLCHAIN_CC}"
-            fi
-        fi
-        if [ ! -z "${TOOLCHAIN_PREFIX}" ]; then
-            TOOLCHAIN_NM="${TOOLCHAIN_PREFIX}nm"
-            TOOLCHAIN_AR="${TOOLCHAIN_PREFIX}ar"
-            TOOLCHAIN_RANLIB="${TOOLCHAIN_PREFIX}ranlib"
-            TOOLCHAIN_STRIP="${TOOLCHAIN_PREFIX}strip"
-        fi
-
-        echo "#########################################################################"
-        echo ""
-        echo "Building ffmpeg for: ${abi}"
-        echo ""
-        echo "#########################################################################"
-        echo ""
-
-        if [ -d "${FFMPEG_SOURCE}/${PREFIX}" ] || [ -L "${FFMPEG_SOURCE}/${PREFIX}" ]; then
-            rm -rf ${FFMPEG_SOURCE}/${PREFIX}
-        fi
-        file_mkdirs ${FFMPEG_SOURCE}/${PREFIX}
-
-        cd ${FFMPEG_SOURCE} > /dev/null 2>&1
-        ./configure \
-            --prefix="${PREFIX}" \
-            --arch=${ARCH} \
-            --cpu=${CPU} \
-            --cross-prefix="${CROSS_PREFIX}" \
-            --nm="${TOOLCHAIN_NM}" \
-            --ar="${TOOLCHAIN_AR}" \
-            --ranlib="${TOOLCHAIN_RANLIB}" \
-            --strip="${TOOLCHAIN_STRIP}" \
-            --sysroot="${SYSROOT}" \
-            --extra-cflags="${EXTRA_CFLAGS}" \
-            --extra-ldflags="${EXTRA_LDFLAGS}" \
-            --extra-ldexeflags="${EXTRA_LDEXEFLAGS}" \
-            ${EXTRA_OPTIONS} \
-            &&
-
-        [ $PIPESTATUS == 0 ] || exit 1
-
-        cp config.* ${PREFIX}
-
-        make clean
-        make ${MAKE_FLAGS} || exit 1
-        make install || exit 1
-
-        if [ -d "${PREFIX}/include" ]; then
-            cp config.* ${PREFIX}/include
-        fi
-        if [ -d "${PREFIX}/lib" ]; then
-            PREFIX_TMP="${PREFIX}/tmp"
-            mv ${PREFIX}/lib ${PREFIX_TMP}
-            file_mkdirs ${PREFIX}/libs/${TOOLCHAIN_PLATFORM}
-            mv ${PREFIX_TMP}/* ${PREFIX}/libs/${TOOLCHAIN_PLATFORM}
-            rm -rf ${PREFIX_TMP}
-        fi
-        if [ -d "${PREFIX}" ]; then
-            cp -rf ${PREFIX}/* ${INSTALL_DST}
-            rm -rf ${PREFIX}
-        fi
+# Android: all abies
+# Linux: arm64、x86_64、x86
+# macOS: arm64、x86_64
+for name in ${APP_SYSTEMS[@]}; do
+    APP_SYSTEM=$name
+    eval APP_ABIES=\$$(echo "${APP_SYSTEM}" | tr '[:lower:]' '[:upper:]')_ABIES
+    if [ -z "${APP_ABIES}" ]; then
+        continue
     fi
+
+    for abi in ${APP_ABIES}; do
+        APP_ABI=$abi
+        PREFIX="libs"
+        TARGET_PATH="$(echo "${APP_SYSTEM}" | tr '[:upper:]' '[:lower:]')/${APP_ABI}"
+
+        ARCH=
+        CPU=
+        CROSS_PREFIX=
+        SYSROOT=
+        EXTRA_OPTIONS="${COMMON_OPTIONS}"
+        EXTRA_CFLAGS="${COMMON_CFLAGS}"
+        EXTRA_LDFLAGS=""
+        EXTRA_LDEXEFLAGS="${COMMON_LDEXEFLAGS}"
+        TOOLCHAIN_PREFIX=
+
+        case ${abi} in
+            arm64-v8a)
+                if [ "${APP_SYSTEM}" == "Android" ] && [ ! -z "${NDK_PATH}" ]; then
+                    ARCH=aarch64
+                    CPU=armv8-a
+                    CROSS_PREFIX="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/bin/aarch64-linux-android${ANDROID_ABI_64BIT}-"
+                    SYSROOT="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/sysroot"
+                    TOOLCHAIN_PREFIX="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/bin/llvm-"
+                    EXTRA_OPTIONS="\
+                        ${EXTRA_OPTIONS} \
+                        --target-os=android \
+                        --enable-asm \
+                        "
+                fi
+                ;;
+            armeabi-v7a)
+                if [ "${APP_SYSTEM}" == "Android" ] && [ ! -z "${NDK_PATH}" ]; then
+                    ARCH=arm
+                    CPU=armv7-a
+                    CROSS_PREFIX="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/bin/armv7a-linux-androideabi${ANDROID_ABI}-"
+                    SYSROOT="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/sysroot"
+                    TOOLCHAIN_PREFIX="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/bin/llvm-"
+                    EXTRA_OPTIONS="\
+                        ${EXTRA_OPTIONS} \
+                        --target-os=android \
+                        --enable-asm \
+                        " \
+                    EXTRA_CFLAGS="\
+                        ${EXTRA_CFLAGS} \
+                        -march=armv7-a \
+                        -mfloat-abi=softfp \
+                        " \
+                    EXTRA_LDFLAGS="\
+                        -Wl,--fix-cortex-a8 \
+                        "
+                fi
+                ;;
+            riscv64)
+                if [ "${APP_SYSTEM}" == "Android" ] && [ ! -z "${NDK_PATH}" ]; then
+                    ARCH=riscv64
+                    CPU=generic
+                    ANDROID_ABI="35"
+                    CROSS_PREFIX="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/bin/riscv64-linux-android${ANDROID_ABI_RISCV64BIT}-"
+                    SYSROOT="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/sysroot"
+                    TOOLCHAIN_PREFIX="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/bin/llvm-"
+                    EXTRA_OPTIONS="\
+                        ${EXTRA_OPTIONS} \
+                        --target-os=android \
+                        --enable-asm \
+                        "
+                fi
+                ;;
+            x86)
+                if [ "${APP_SYSTEM}" == "Android" ] && [ ! -z "${NDK_PATH}" ]; then
+                    ARCH=x86
+                    CPU=i686
+                    CROSS_PREFIX="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/bin/i686-linux-android${ANDROID_ABI}-"
+                    SYSROOT="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/sysroot"
+                    TOOLCHAIN_PREFIX="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/bin/llvm-"
+                    EXTRA_OPTIONS="\
+                        ${EXTRA_OPTIONS} \
+                        --target-os=android \
+                        --disable-asm
+                        "
+                elif [ "${APP_SYSTEM}" != "Android" ]; then
+                    ARCH=x86
+                    CPU=i686
+                    TOOLCHAIN_PREFIX="${CROSS_PREFIX}"
+                    if [ $(check_command_exists "yasm") = true ] || [ $(check_command_exists "nasm") = true ]; then
+                        EXTRA_OPTIONS="\
+                            ${EXTRA_OPTIONS} \
+                            --enable-asm \
+                            "
+                    else
+                        EXTRA_OPTIONS="\
+                            ${EXTRA_OPTIONS} \
+                            --disable-asm
+                            "
+                    fi
+                fi
+                ;;
+            x86_64)
+                if [ "${APP_SYSTEM}" == "Android" ] && [ ! -z "${NDK_PATH}" ]; then
+                    ARCH=x86_64
+                    CPU=x86-64
+                    CROSS_PREFIX="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/bin/x86_64-linux-android${ANDROID_ABI_64BIT}-"
+                    SYSROOT="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/sysroot"
+                    TOOLCHAIN_PREFIX="${NDK_PATH}/toolchains/llvm/prebuilt/${HOST_PLATFORM}/bin/llvm-"
+                    EXTRA_OPTIONS="\
+                        ${EXTRA_OPTIONS} \
+                        --target-os=android \
+                        "
+                    if [ $(check_command_exists "yasm") = true ] || [ $(check_command_exists "nasm") = true ]; then
+                        EXTRA_OPTIONS="\
+                            ${EXTRA_OPTIONS} \
+                            --enable-asm
+                            "
+                    else
+                        EXTRA_OPTIONS="\
+                            ${EXTRA_OPTIONS} \
+                            --disable-asm
+                            "
+                    fi
+                elif [ "${APP_SYSTEM}" != "Android" ]; then
+                    ARCH=x86_64
+                    CPU=x86-64
+                    if [ $(check_command_exists "yasm") = true ] || [ $(check_command_exists "nasm") = true ]; then
+                        EXTRA_OPTIONS="\
+                            ${EXTRA_OPTIONS} \
+                            --enable-asm \
+                            "
+                    else
+                        EXTRA_OPTIONS="\
+                            ${EXTRA_OPTIONS} \
+                            --disable-asm
+                            "
+                    fi
+                fi
+                ;;
+            arm64)
+                if [ "${APP_SYSTEM}" != "Android" ]; then
+                    ARCH=aarch64
+                    CPU=armv8-a
+                    EXTRA_OPTIONS="\
+                        ${EXTRA_OPTIONS} \
+                        --enable-asm \
+                        "
+                fi
+                ;;
+            *)
+                ;;
+        esac
+
+        if [ ! -z "${ARCH}" ] && [ ! -z "${CPU}" ]; then
+            if [ "${APP_SYSTEM}" == "Android" ]; then
+                TOOLCHAIN_CC="${CROSS_PREFIX}clang"
+            else
+                TOOLCHAIN_CC="${TOOLCHAIN_PREFIX}gcc"
+            fi
+            if [ -f "${TOOLCHAIN_CC}" ] || [ $(check_command_exists "${TOOLCHAIN_CC}") = true ]; then
+                if [ $(check_command_exists "ccache") = true ]; then
+                    EXTRA_OPTIONS="${EXTRA_OPTIONS} --cc='ccache ${TOOLCHAIN_CC}'"
+                else
+                    EXTRA_OPTIONS="${EXTRA_OPTIONS} --cc=${TOOLCHAIN_CC}"
+                fi
+            fi
+            if [ ! -z "${TOOLCHAIN_PREFIX}" ]; then
+                TOOLCHAIN_NM="${TOOLCHAIN_PREFIX}nm"
+                TOOLCHAIN_AR="${TOOLCHAIN_PREFIX}ar"
+                TOOLCHAIN_RANLIB="${TOOLCHAIN_PREFIX}ranlib"
+                TOOLCHAIN_STRIP="${TOOLCHAIN_PREFIX}strip"
+            fi
+
+            echo "#########################################################################"
+            echo ""
+            echo "Building ffmpeg for: ${APP_SYSTEM} ${APP_ABI}"
+            echo ""
+            echo "#########################################################################"
+            echo ""
+
+            if [ -d "${FFMPEG_SOURCE}/${PREFIX}" ] || [ -L "${FFMPEG_SOURCE}/${PREFIX}" ]; then
+                rm -rf ${FFMPEG_SOURCE}/${PREFIX}
+            fi
+            file_mkdirs ${FFMPEG_SOURCE}/${PREFIX}
+
+            cd ${FFMPEG_SOURCE} > /dev/null 2>&1
+            ./configure \
+                --prefix="${PREFIX}" \
+                --arch=${ARCH} \
+                --cpu=${CPU} \
+                --cross-prefix="${CROSS_PREFIX}" \
+                --nm="${TOOLCHAIN_NM}" \
+                --ar="${TOOLCHAIN_AR}" \
+                --ranlib="${TOOLCHAIN_RANLIB}" \
+                --strip="${TOOLCHAIN_STRIP}" \
+                --sysroot="${SYSROOT}" \
+                --extra-cflags="${EXTRA_CFLAGS}" \
+                --extra-ldflags="${EXTRA_LDFLAGS}" \
+                --extra-ldexeflags="${EXTRA_LDEXEFLAGS}" \
+                ${EXTRA_OPTIONS}
+
+            [ $PIPESTATUS == 0 ] || exit 1
+
+            cp config.* ${PREFIX}
+
+            make clean
+            make ${MAKE_FLAGS} || exit 1
+            make install || exit 1
+
+            if [ -d "${PREFIX}/include" ]; then
+                cp config.* ${PREFIX}/include
+            fi
+            if [ -d "${PREFIX}/lib" ]; then
+                file_mkdirs ${PREFIX}/libs/${TARGET_PATH}
+                mv ${PREFIX}/lib/* ${PREFIX}/libs/${TARGET_PATH}
+                rm -rf ${PREFIX}/lib
+            fi
+            if [ -d "${PREFIX}" ]; then
+                if [ -d "${INSTALL_PATH}/libs/${TARGET_PATH}" ]; then
+                    rm -rf ${INSTALL_PATH}/libs/${TARGET_PATH}
+                fi
+                cp -rf ${PREFIX}/* ${INSTALL_PATH}
+                rm -rf ${PREFIX}
+            fi
+        fi
+    done
 done
 
 exit 0

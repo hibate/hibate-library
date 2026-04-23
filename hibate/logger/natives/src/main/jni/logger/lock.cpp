@@ -25,10 +25,21 @@
 #include <ctime>
 #endif
 
+#ifdef __APPLE__
+#include <unistd.h>
+#include <errno.h>
+#endif
+
 #include "lock.h"
 
 #ifndef _WIN32
 void mutex_timed_lock(long millis, timespec *ts);
+#endif
+
+#ifdef __APPLE__
+int pthread_mutex_timedlock(pthread_mutex_t *mutex, const struct timespec *abstime);
+int pthread_rwlock_timedrdlock(pthread_rwlock_t *rwlock, const struct timespec *abstime);
+int pthread_rwlock_timedwrlock(pthread_rwlock_t *rwlock, const struct timespec *abstime);
 #endif
 
 class ReadLock final : public Lock {
@@ -80,6 +91,50 @@ void mutex_timed_lock(long millis, timespec *ts) {
         ts->tv_sec += 1;
         ts->tv_nsec -= 1000000000;
     }
+}
+#endif
+
+#ifdef __APPLE__
+int pthread_mutex_timedlock(pthread_mutex_t *mutex, const struct timespec *abstime) {
+    int ret;
+    while ((ret = pthread_mutex_trylock(mutex)) == EBUSY) {
+        struct timespec now;
+        clock_gettime(CLOCK_REALTIME, &now);
+        if (now.tv_sec > abstime->tv_sec ||
+           (now.tv_sec == abstime->tv_sec && now.tv_nsec >= abstime->tv_nsec)) {
+            return ETIMEDOUT;
+        }
+        usleep(1000);
+    }
+    return ret;
+}
+
+int pthread_rwlock_timedrdlock(pthread_rwlock_t *rwlock, const struct timespec *abstime) {
+    int ret;
+    while ((ret = pthread_rwlock_tryrdlock(rwlock)) == EBUSY) {
+        struct timespec now;
+        clock_gettime(CLOCK_REALTIME, &now);
+        if (now.tv_sec > abstime->tv_sec ||
+           (now.tv_sec == abstime->tv_sec && now.tv_nsec >= abstime->tv_nsec)) {
+            return ETIMEDOUT;
+        }
+        usleep(1000);
+    }
+    return ret;
+}
+
+int pthread_rwlock_timedwrlock(pthread_rwlock_t *rwlock, const struct timespec *abstime) {
+    int ret;
+    while ((ret = pthread_rwlock_trywrlock(rwlock)) == EBUSY) {
+        struct timespec now;
+        clock_gettime(CLOCK_REALTIME, &now);
+        if (now.tv_sec > abstime->tv_sec ||
+           (now.tv_sec == abstime->tv_sec && now.tv_nsec >= abstime->tv_nsec)) {
+            return ETIMEDOUT;
+        }
+        usleep(1000);
+    }
+    return ret;
 }
 #endif
 
