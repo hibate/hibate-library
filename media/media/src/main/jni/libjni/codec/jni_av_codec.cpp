@@ -35,6 +35,7 @@ extern "C" {
 #include "jni_av_codec.h"
 #include "jni_av_codec_context.h"
 #include "jni_av_codec_id.h"
+#include "util/jni_av_util.h"
 
 #define className "org/hibate/media/codec/impl/AVCodecImpl"
 
@@ -160,12 +161,19 @@ jobjectArray avcodec_codec_getPixelFormats(JNIEnv* env, jobject thiz) {
         return nullptr;
     }
 
+#if (AV_VERSION_SDK < AV_VERSION_N7_1)
+    const AVPixelFormat *pix_fmts = codec->pix_fmts;
+    if (nullptr == pix_fmts) {
+        return nullptr;
+    }
+#else
     const AVPixelFormat *pix_fmts = nullptr;
     const int ret = avcodec_get_supported_config(nullptr, codec, AV_CODEC_CONFIG_PIX_FORMAT, 0,
         (const void **)(&pix_fmts), nullptr);
     if ((ret < 0) || (nullptr == pix_fmts)) {
         return nullptr;
     }
+#endif
 
     int size = 0;
     while (pix_fmts[size] != AV_PIX_FMT_NONE) {
@@ -188,12 +196,19 @@ jobjectArray avcodec_codec_getSampleFormats(JNIEnv* env, jobject thiz) {
         return nullptr;
     }
 
+#if (AV_VERSION_SDK < AV_VERSION_N7_1)
+    const AVSampleFormat *sample_fmts = codec->sample_fmts;
+    if (nullptr == sample_fmts) {
+        return nullptr;
+    }
+#else
     const AVSampleFormat *sample_fmts = nullptr;
     const int ret = avcodec_get_supported_config(nullptr, codec, AV_CODEC_CONFIG_SAMPLE_FORMAT, 0,
         (const void **)(&sample_fmts), nullptr);
     if ((ret < 0) || (nullptr == sample_fmts)) {
         return nullptr;
     }
+#endif
 
     int size = 0;
     while (sample_fmts[size] != AV_SAMPLE_FMT_NONE) {

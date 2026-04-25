@@ -488,7 +488,7 @@ public class TranscodeTest {
 
                 oFilterContext = new AVFilterContextImpl(graph, oFilter, "out");
                 AVOptions options = new AVOptionsImpl(oFilterContext);
-                options.putPixelFormat("pix_fmts",
+                options.putPixelFormat((AVUtils.getVersion() >= AVVersion.N8_0) ? "pix_fmts" : "pix_fmt",
                         context.getEncoder().getCodecContext().getPixelFormat(),
                         AVOptions.AV_OPT_SEARCH_CHILDREN);
                 oFilterContext.setDictionary(null);
@@ -521,7 +521,7 @@ public class TranscodeTest {
 
                 oFilterContext = new AVFilterContextImpl(graph, oFilter, "out");
                 AVOptions options = new AVOptionsImpl(oFilterContext);
-                options.putSampleFormat("sample_fmts",
+                options.putSampleFormat((AVUtils.getVersion() >= AVVersion.N8_0) ? "sample_fmts" : "sample_fmt",
                         context.getEncoder().getCodecContext().getSampleFormat(),
                         AVOptions.AV_OPT_SEARCH_CHILDREN);
                 options.put("ch_layouts", emptyIfNull.apply(
@@ -530,7 +530,8 @@ public class TranscodeTest {
                 options.put("sample_rates",
                         String.valueOf(context.getEncoder().getCodecContext().getSampleRate()),
                         AVOptions.AV_OPT_SEARCH_CHILDREN);
-                if (context.getEncoder().getCodecContext().getFrameSize() > 0) {
+                if ((AVUtils.getVersion() >= AVVersion.N8_0) &&
+                        (context.getEncoder().getCodecContext().getFrameSize() > 0)) {
                     oFilterContext.setFrameSize(context.getEncoder().getCodecContext().getFrameSize());
                 }
                 oFilterContext.setDictionary(null);
