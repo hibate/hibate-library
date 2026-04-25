@@ -3,7 +3,7 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 NATIVES_LIBS = $(NATIVES_PATH)/libs/$(TARGET_ARCH_ABI)
-FFMPGE_LIBS = $(LOCAL_PATH)/ffmpeg/libs/android/$(TARGET_ARCH_ABI)
+FFMPGE_LIBS = $(LOCAL_PATH)/ffmpeg/android/$(TARGET_ARCH_ABI)/lib
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := liblogger

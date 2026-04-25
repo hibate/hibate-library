@@ -46,6 +46,9 @@ COMMON_OPTIONS="$COMMON_OPTIONS --enable-avcodec"
 COMMON_OPTIONS="$COMMON_OPTIONS --enable-avformat"
 COMMON_OPTIONS="$COMMON_OPTIONS --enable-swresample"
 COMMON_OPTIONS="$COMMON_OPTIONS --enable-swscale"
+if [ ! -z "${VERSION}" ] && awk "BEGIN {exit !(${VERSION} < 8.0)}"; then
+    COMMON_OPTIONS="$COMMON_OPTIONS --disable-postproc"
+fi
 COMMON_OPTIONS="$COMMON_OPTIONS --enable-avfilter"
 COMMON_OPTIONS="$COMMON_OPTIONS --enable-network"
 

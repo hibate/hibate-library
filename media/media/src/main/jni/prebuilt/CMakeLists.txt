@@ -34,12 +34,12 @@ set(FFMPEG_LIBRARIES avcodec avfilter avformat avutil swscale)
 foreach (MODULE ${FFMPEG_LIBRARIES})
     find_library(${MODULE}_PATH
             NAMES ${MODULE}
-            PATHS "${FFMPEG_HOME}/libs/${TARGET_PATH}"
+            PATHS "${FFMPEG_HOME}/lib"
             NO_DEFAULT_PATH
     )
     add_library(${MODULE} SHARED IMPORTED GLOBAL)
     if (APP_SYSTEM STREQUAL "Windows")
-        file(GLOB ${MODULE}_DLL_PATH "${FFMPEG_HOME}/libs/${TARGET_PATH}/${MODULE}-*.dll")
+        file(GLOB ${MODULE}_DLL_PATH "${FFMPEG_HOME}/lib/${MODULE}-*.dll")
         list(GET ${MODULE}_DLL_PATH 0 ${MODULE}_DLL_PATH)
         set_target_properties(${MODULE} PROPERTIES
                 IMPORTED_IMPLIB "${${MODULE}_PATH}"

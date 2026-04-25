@@ -10,6 +10,23 @@ Android | all    | `Android NDK r28c`
 Linux   | x86_64 | `Ubuntu 24.04`
 macOS   | arm64  | `macOS Sequoia 15.7.5`
 
+编译脚本已在以下 `FFmpeg` 版本完成验证:
+
+* `n8.0`、`n8.1`
+* `n7.0`、`n7.1`
+* `n6.1`
+
+编译脚本支持自动获取源码版本号, 需满足条件:
+
+* 安装 `git` 命令行工具
+* 使用克隆方式获取源码, 且包含标签
+
+若不满足以上条件, 在编译前可手动导出版本号:
+
+```shell
+$ export VERSION=n8.1
+```
+
 #### 环境
 
 强烈建议在编译期开启 `ASM` 汇编优化, 构建脚本已默认支持(需安装依赖库)。
@@ -97,34 +114,50 @@ $ ./sbin/build.sh <ffmpeg source direcroty>
 
 ```
 prebuilt
- - ffmpeg
-   - include
-   - libs
-     - android
-       - arm64-v8a
-         - libavcodec.so
-         - ...
-       - armeabi-v7a
-         - libavcodec.so
-         - ...
-       - ...
-     - linux
-       - x86_64
-         - libavcodec.so
-         - ...
-     - macos
-       - arm64
-         - libavcodec.dylib
-         - ...
-       - x86_64
-         - libavcodec.dylib
-         - ...
-     - windows
-       - x64
-         - avcodec.lib
-         - avcodec-62.dll
-         - ...
-   - share
+  - ffmpeg
+    - android
+      - arm64-v8a
+        - include
+        - lib
+          - libavcodec.so
+          - ...
+      - armeabi-v7a
+        - include
+        - lib
+          - libavcodec.so
+          - ...
+      - ...
+    - linux
+      - arm64
+        - include
+        - lib
+          - libavcodec.so
+          - ...
+      - x86_64
+        - include
+        - lib
+          - libavcodec.so
+          - ...
+      - ...
+    - macos
+      - arm64
+        - include
+        - lib
+          - libavcodec.dylib
+          - ...
+      - x86_64
+        - include
+        - lib
+          - libavcodec.dylib
+          - ...
+    - windows
+      - x64
+        - include
+        - lib
+          - avcodec.lib
+          - avcodec-62.dll
+          - ...
+      - ...
 ```
 
 各系统环境架构如下:

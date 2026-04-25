@@ -173,6 +173,30 @@ function file_realpath() {
 
 #########################################################################
 #
+# Version
+#
+#########################################################################
+
+# 版本号(主版本和子版本号)
+if [ ! -z "${VERSION}" ]; then
+    VERSION_TAG="${VERSION}"
+    unset VERSION
+fi
+if [ -z "${VERSION_TAG}" ] && [ $(check_command_exists "git") = true ] && [ -d "${FFMPEG_SOURCE}/.git" ]; then
+    cd ${FFMPEG_SOURCE} > /dev/null 2>&1
+    VERSION_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
+    cd - > /dev/null 2>&1
+fi
+if [ ! -z "${VERSION_TAG}" ]; then
+    VERSION_TAG=$(echo "$VERSION_TAG" | sed 's/^n//' | tr '-' '.' | cut -d. -f1,2)
+    if [ ! -z "${VERSION_TAG}" ]; then
+        VERSION=${VERSION_TAG}
+    fi
+    unset VERSION_TAG
+fi
+
+#########################################################################
+#
 # Setup options
 #
 #########################################################################
@@ -208,6 +232,9 @@ fi
 # 获取 ffmpeg 源码绝对路径
 FFMPEG_SOURCE=$(file_realpath ${FFMPEG_SOURCE})
 # 获取安装目录绝对路径
+if [ ! -z "${BUILD_PATH}" ]; then
+    INSTALL_PATH=${BUILD_PATH}
+fi
 file_mkdirs ${INSTALL_PATH}
 INSTALL_PATH=$(file_realpath ${INSTALL_PATH})
 
@@ -258,10 +285,10 @@ for name in ${APP_SYSTEMS[@]}; do
         continue
     fi
 
+    PREFIX="$(echo "${APP_SYSTEM}" | tr '[:upper:]' '[:lower:]')"
     for abi in ${APP_ABIES}; do
         APP_ABI=$abi
-        PREFIX="libs"
-        TARGET_PATH="$(echo "${APP_SYSTEM}" | tr '[:upper:]' '[:lower:]')/${APP_ABI}"
+        TARGET_PATH="${PREFIX}/${APP_ABI}"
 
         ARCH=
         CPU=
@@ -308,6 +335,12 @@ for name in ${APP_SYSTEMS[@]}; do
                     EXTRA_LDFLAGS="\
                         -Wl,--fix-cortex-a8 \
                         "
+                    if [ ! -z "${VERSION}" ] && awk "BEGIN {exit !(${VERSION} <= 6.1)}"; then
+                        EXTRA_OPTIONS="\
+                            ${EXTRA_OPTIONS} \
+                            --disable-vulkan \
+                            "
+                    fi
                 fi
                 ;;
             riscv64)
@@ -321,8 +354,18 @@ for name in ${APP_SYSTEMS[@]}; do
                     EXTRA_OPTIONS="\
                         ${EXTRA_OPTIONS} \
                         --target-os=android \
-                        --enable-asm \
                         "
+                    if [ ! -z "${VERSION}" ] && awk "BEGIN {exit !(${VERSION} >= 8.0)}"; then
+                        EXTRA_OPTIONS="\
+                            ${EXTRA_OPTIONS} \
+                            --enable-asm \
+                            "
+                    else
+                        EXTRA_OPTIONS="\
+                            ${EXTRA_OPTIONS} \
+                            --disable-asm \
+                            "
+                    fi
                 fi
                 ;;
             x86)
@@ -337,6 +380,12 @@ for name in ${APP_SYSTEMS[@]}; do
                         --target-os=android \
                         --disable-asm
                         "
+                    if [ ! -z "${VERSION}" ] && awk "BEGIN {exit !(${VERSION} <= 6.1)}"; then
+                        EXTRA_OPTIONS="\
+                            ${EXTRA_OPTIONS} \
+                            --disable-vulkan \
+                            "
+                    fi
                 elif [ "${APP_SYSTEM}" != "Android" ]; then
                     ARCH=x86
                     CPU=i686
@@ -433,14 +482,14 @@ for name in ${APP_SYSTEMS[@]}; do
             echo "#########################################################################"
             echo ""
 
-            if [ -d "${FFMPEG_SOURCE}/${PREFIX}" ] || [ -L "${FFMPEG_SOURCE}/${PREFIX}" ]; then
-                rm -rf ${FFMPEG_SOURCE}/${PREFIX}
+            if [ -d "${FFMPEG_SOURCE}/${TARGET_PATH}" ] || [ -L "${FFMPEG_SOURCE}/${TARGET_PATH}" ]; then
+                rm -rf ${FFMPEG_SOURCE}/${TARGET_PATH}
             fi
-            file_mkdirs ${FFMPEG_SOURCE}/${PREFIX}
+            file_mkdirs ${FFMPEG_SOURCE}/${TARGET_PATH}
 
             cd ${FFMPEG_SOURCE} > /dev/null 2>&1
             ./configure \
-                --prefix="${PREFIX}" \
+                --prefix="${TARGET_PATH}" \
                 --arch=${ARCH} \
                 --cpu=${CPU} \
                 --cross-prefix="${CROSS_PREFIX}" \
@@ -456,29 +505,29 @@ for name in ${APP_SYSTEMS[@]}; do
 
             [ $PIPESTATUS == 0 ] || exit 1
 
-            cp config.* ${PREFIX}
+            cp config.* ${TARGET_PATH}
 
             make clean
             make ${MAKE_FLAGS} || exit 1
             make install || exit 1
 
-            if [ -d "${PREFIX}/include" ]; then
-                cp config.* ${PREFIX}/include
+            if [ -d "${TARGET_PATH}/include" ]; then
+                cp config.* ${TARGET_PATH}/include
             fi
-            if [ -d "${PREFIX}/lib" ]; then
-                file_mkdirs ${PREFIX}/libs/${TARGET_PATH}
-                mv ${PREFIX}/lib/* ${PREFIX}/libs/${TARGET_PATH}
-                rm -rf ${PREFIX}/lib
-            fi
-            if [ -d "${PREFIX}" ]; then
-                if [ -d "${INSTALL_PATH}/libs/${TARGET_PATH}" ]; then
-                    rm -rf ${INSTALL_PATH}/libs/${TARGET_PATH}
+            if [ -d "${TARGET_PATH}" ]; then
+                if [ -d "${INSTALL_PATH}/${TARGET_PATH}" ]; then
+                    rm -rf ${INSTALL_PATH}/${TARGET_PATH}
                 fi
-                cp -rf ${PREFIX}/* ${INSTALL_PATH}
-                rm -rf ${PREFIX}
+                file_mkdirs ${INSTALL_PATH}/${TARGET_PATH}
+                cp -rf ${TARGET_PATH}/* ${INSTALL_PATH}/${TARGET_PATH}
+                rm -rf ${TARGET_PATH}
             fi
         fi
     done
+
+    if [ -d "${PREFIX}" ]; then
+        rm -rf ${PREFIX}
+    fi
 done
 
 exit 0

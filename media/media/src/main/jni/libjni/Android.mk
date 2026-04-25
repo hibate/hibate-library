@@ -40,7 +40,7 @@ INCLUDES = \
     $(LOCAL_PATH) \
     $(LOCAL_PATH)/../lang \
     $(LOCAL_PATH)/../utils \
-    $(LOCAL_PATH)/../prebuilt/ffmpeg/include \
+    $(LOCAL_PATH)/../prebuilt/ffmpeg/android/$(TARGET_ARCH_ABI)/include \
     $(NATIVES_PATH)/jni/logger
 
 EXPORT_INCLUDES = $(INCLUDES)
